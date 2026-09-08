@@ -3,6 +3,7 @@
 *.obj
 *.exe
 *.out
+*.rft
 /build/
 demo
 demo.exe
