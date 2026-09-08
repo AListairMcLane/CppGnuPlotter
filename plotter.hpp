@@ -50,9 +50,17 @@ namespace Graphing {
                 threads.emplace_back(std::move(job));
             }
 
+            void show_threads(){
+                std::lock_guard<std::mutex> lock(m);
+                for (auto& t : threads) {
+                    std::cout << &t << std::endl;
+                }
+            }
+
             void join_all() {
                 std::lock_guard<std::mutex> lock(m);
                 for (auto& t : threads) {
+                    std::cout << &t << std::endl;
                     if (t.joinable()) t.join();
                 }
                 threads.clear();
@@ -73,8 +81,13 @@ namespace Graphing {
         }
 
     } 
+
+    inline void list_threads() {
+        detail::registry().show_threads();
+    }
     
     inline void wait_for_all_plots() {
+
         detail::registry().join_all();
     }
     
@@ -254,7 +267,7 @@ namespace Graphing {
             }
         }
         
-        void render_standalone(bool hold) const {
+        void render_standalone() const {
             if (empty()) {
                 std::cerr << "Plotter: show() called with no series added, nothing to plot\n";
                 return;
@@ -263,9 +276,8 @@ namespace Graphing {
             const std::filesystem::path temp_dir = std::filesystem::temp_directory_path();
             const std::string prefix = "plotter_" + std::to_string(detail::plot_id_counter().fetch_add(1));
             const std::vector<std::string> file_paths = write_data_files(temp_dir, prefix);
-
-            const char* gnuplotCmd = hold ? "gnuplot -persistent" : "gnuplot";
-            FILE* gnupipe = PLOTTER_POPEN(gnuplotCmd, "w");
+            
+            FILE* gnupipe = PLOTTER_POPEN("gnuplot -persistent", "w");
             if (!gnupipe) {
                 std::cerr << "Plotter: failed to start gnuplot. Is it installed and on PATH?\n";
                 return;
@@ -274,6 +286,15 @@ namespace Graphing {
             write_global_cosmetic(gnupipe, 500, 500);
             write_settings(gnupipe);
             write_plot_commands(gnupipe, file_paths);
+
+            // Don't rely on "-persistent" alone to keep the child process (and thus
+            // pclose()) blocked until the window closes -- when several gnuplot
+            // instances are launched concurrently (one per render thread), the qt
+            // terminal's handoff to its gnuplot_qt helper process can race, and the
+            // parent gnuplot process can exit while the window is still open. This
+            // explicit pause makes gnuplot itself block until the window closes,
+            // regardless of that race.
+            fprintf(gnupipe, "pause mouse close\n");
 
             PLOTTER_PCLOSE(gnupipe);
 
@@ -477,10 +498,10 @@ namespace Graphing {
             smoothed.push_back("");
         }
         
-        void show(bool hold = true) const {
+        void show() const {
             auto snapshot = std::make_shared<Plotter>(*this);
-            detail::launch_render([snapshot, hold]() {
-                snapshot->render_standalone(hold);
+            detail::launch_render([snapshot]() {
+                snapshot->render_standalone();
             });
         }
     };
@@ -555,6 +576,13 @@ namespace Graphing {
             }
 
             fprintf(gnupipe, "unset multiplot\n");
+
+            if (hold) {
+                // See Plotter::render_standalone() -- "-persistent" alone doesn't
+                // reliably keep this process blocked until the window closes when
+                // several gnuplot instances race to start up concurrently.
+                fprintf(gnupipe, "pause mouse close\n");
+            }
 
             PLOTTER_PCLOSE(gnupipe);
 

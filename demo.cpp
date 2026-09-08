@@ -28,7 +28,6 @@ constexpr double PI = 3.14159265358979323846;
 
 static void simulate_work(const char* label, int steps) {
     for (int i = 1; i <= steps; i++) {
-        std::cout << "  [" << label << "] doing other work... (" << i << "/" << steps << ")\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 }
@@ -56,6 +55,7 @@ int main() {
         std::cout << "show() already returned -- the window renders in the background.\n";
     }
 
+    Graphing::list_threads();
     simulate_work("after plot 1", 5);
 
     // --- 2. Several independent plots open side by side ---------------------
@@ -81,6 +81,9 @@ int main() {
         s.add_surf(x, y, z, "Surf");
         s.show();
     }
+
+    Graphing::list_threads();
+    Graphing::wait_for_all_plots();
 
     simulate_work("after plots 2 & 3", 5);
 
@@ -160,10 +163,7 @@ int main() {
 
     simulate_work("after figure", 5);
 
-    std::cout << "\nAll work done. wait_for_all_plots() just makes sure every "
-                 "show() call above has been fully sent to gnuplot before we exit "
-                 "-- it's optional, and doesn't wait for you to close the windows "
-                 "(gnuplot's own terminal keeps them open independently).\n";
+    Graphing::list_threads();
     Graphing::wait_for_all_plots();
 
     std::cout << "Demo complete. Close the plot windows whenever you're done with them.\n";
