@@ -82,7 +82,7 @@ Each `Plotter` instance accumulates series until you call `show()`; a second `sh
 
 ## Known limitations
 - **Series names double as text**, not just labels: they're used verbatim in gnuplot's `title '...'` clause, so a name containing a single quote (`'`) will break the generated gnuplot command. Stick to plain text without quotes.
-- **`add_surf` data isn't grid-blocked.** gnuplot's `splot ... with pm3d` renders a clean mesh when scan-lines (rows of constant `y`) are separated by blank lines in the data file; this library writes a flat list of `(x, y, z)` triples without those separators. For a small/simple grid it still renders something reasonable (see the demo), but don't expect a polished continuous surface for larger or irregular grids.
+- **`add_surf` expects grid-ordered data.** gnuplot's `splot ... with pm3d` renders a clean mesh from scan-lines (runs of constant `x`) separated by blank lines in the data file; this library inserts that blank line automatically whenever `x` changes between consecutive points. That means points must already be grouped by `x` (e.g. generated with `x` as the outer loop and `y` as the inner loop, as in the demo) — arbitrary/scattered point order won't produce a coherent surface.
 - **Default terminal is `qt`.** If your gnuplot build doesn't include the Qt terminal, edit the two `set terminal qt ...` lines near the top of `Build()` in `plotter.hpp` to `wxt`, `x11` (Linux), or `aqua` (macOS).
 - **Not thread-safe.** A `Plotter` instance isn't meant to be used from multiple threads concurrently.
 - This wraps a handful of common gnuplot plot types for convenience, not the full gnuplot command surface. For anything more exotic, pipe to gnuplot directly.

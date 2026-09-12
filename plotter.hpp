@@ -157,9 +157,23 @@ namespace Graphing {
                         fprintf(fp, "%f %f\n", X_sets[i][j], Y_sets[i][j]);
                     }
                 }
-                if (type[i] == 'i' || type[i] == 's' || type[i] == 'f') {
+                if (type[i] == 'i' || type[i] == 'f') {
                     for (size_t j = 0; j < X_sets[i].size(); j++) {
                         // For 'f', Z_sets[i] holds the second Y trace.
+                        fprintf(fp, "%f %f %f\n", X_sets[i][j], Y_sets[i][j], Z_sets[i][j]);
+                    }
+                }
+                if (type[i] == 's') {
+                    // pm3d needs scan-lines (runs of constant x) separated by a
+                    // blank line to know where one row of the grid ends and the
+                    // next begins -- otherwise it treats the whole series as one
+                    // undifferentiated blob of points and draws garbage. Points
+                    // are expected to already be grouped by x (as add_surf's
+                    // caller would naturally generate a grid, x-major).
+                    for (size_t j = 0; j < X_sets[i].size(); j++) {
+                        if (j > 0 && X_sets[i][j] != X_sets[i][j - 1]) {
+                            fprintf(fp, "\n");
+                        }
                         fprintf(fp, "%f %f %f\n", X_sets[i][j], Y_sets[i][j], Z_sets[i][j]);
                     }
                 }
